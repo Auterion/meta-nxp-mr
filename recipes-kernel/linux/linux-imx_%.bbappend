@@ -16,6 +16,8 @@ SRC_URI:append:imx95-navq = " \
          file://sfp.cfg \
          file://p3h.cfg \
          file://lt8912b.cfg \
+         file://0007-remoteproc-imx_rproc-add-m7-ddr-window.patch \
+         file://0008-arm64-dts-imx95-navqb-widen-m7text-reservation.patch \
 "
 
 SRC_URI:append:imx8mpnavq = " \
