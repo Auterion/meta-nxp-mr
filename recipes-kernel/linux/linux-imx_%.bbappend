@@ -21,6 +21,8 @@ SRC_URI:append:imx95-navq = " \
          file://0008-arm64-dts-imx95-navqb-widen-m7text-reservation.patch \
          file://0010-arm64-dts-imx95-navqb-disable-gpio5-for-m7.patch \
          file://0011-firmware-imx-sm-lmm-log-lm-boot-shutdown-events.patch \
+         file://0012-firmware-imx-sm-lmm-let-other-drivers-subscribe-to-lm-events.patch \
+         file://0013-remoteproc-imx_rproc-re-attach-after-an-m7-restart.patch \
 "
 
 SRC_URI:append:imx8mpnavq = " \
