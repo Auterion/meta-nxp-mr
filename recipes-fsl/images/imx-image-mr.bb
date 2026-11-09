@@ -56,7 +56,13 @@ IMAGE_INSTALL:append:imx95-navq = " \
 	linux-firmware-mali-csffw-arch1012 \
 	panvk-layer \
     enetc-vsi-handoff-mcore \
+	usb-gadget-net \
 	"
+
+# DHCP server for usb-gadget-net (single lease 10.41.1.2 on usbc). The
+# package's own udhcpd.service stays off (DHCPD_ENABLED="no" in
+# /etc/default/udhcpd); usb-gadget-net-dhcp.service runs its own instance.
+APTGET_EXTRA_PACKAGES:append:imx95-navq = " udhcpd"
 
 APTGET_EXTRA_PACKAGES += "\
 	ntpdate patchelf \

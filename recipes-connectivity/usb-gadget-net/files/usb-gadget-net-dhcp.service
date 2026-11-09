@@ -1,0 +1,17 @@
+[Unit]
+Description=DHCP server for the USB network gadget (single lease 10.41.1.2)
+ConditionPathExists=/usr/sbin/udhcpd
+BindsTo=usb-gadget-net.service
+After=usb-gadget-net.service
+
+[Service]
+RuntimeDirectory=usb-gadget-net
+# Start with an empty lease file so the single lease is free for whichever
+# host is connected now (same as Skynode's clear_dhcp_leases).
+ExecStartPre=/bin/sh -c ': > /run/usb-gadget-net/udhcpd.leases'
+ExecStart=/usr/sbin/udhcpd -f /etc/usb-gadget-net/udhcpd.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=usb-gadget-net.service

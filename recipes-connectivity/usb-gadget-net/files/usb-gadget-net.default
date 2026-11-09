@@ -1,0 +1,18 @@
+# Configuration for usb-gadget-net.service
+
+# USB device controller. 4c100000.usb is the DWC3 behind the
+# "USB1 3.0 Type C" connector. Empty = first entry in /sys/class/udc.
+USB_UDC="4c100000.usb"
+
+# ncm (Linux, macOS, Windows 10+ without drivers) or ecm (no Windows support)
+USB_NET_FUNCTION="ncm"
+
+# Linux Foundation "Multifunction Composite Gadget" (development ID)
+USB_ID_VENDOR="0x1d6b"
+USB_ID_PRODUCT="0x0104"
+USB_MANUFACTURER="NXP"
+USB_PRODUCT="NavQ95"
+
+# Same addressing as Skynode: board 10.41.1.1, host gets 10.41.1.2 via DHCP
+NIC_NAME="usbc"
+NIC_ADDRESS="10.41.1.1/24"

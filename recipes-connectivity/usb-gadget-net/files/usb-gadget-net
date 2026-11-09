@@ -1,0 +1,165 @@
+#!/bin/sh
+#
+# USB network gadget for the NavQ95, modelled on the Skynode usbgadget /
+# usbethernet scripts: the board shows up on the host as a USB network
+# adapter, the board side is 10.41.1.1/24 on interface "usbc", and
+# usb-gadget-net-dhcp.service hands the host exactly one lease (10.41.1.2).
+#
+# Configuration: /etc/default/usb-gadget-net
+#
+# Usage: usb-gadget-net {start|stop}
+
+set -eu
+
+GADGET_PATH="/sys/kernel/config/usb_gadget/navq"
+LOG_TAG="usb-gadget-net"
+
+USB_UDC="${USB_UDC:-}"
+USB_NET_FUNCTION="${USB_NET_FUNCTION:-ncm}"
+USB_ID_VENDOR="${USB_ID_VENDOR:-0x1d6b}"
+USB_ID_PRODUCT="${USB_ID_PRODUCT:-0x0104}"
+USB_MANUFACTURER="${USB_MANUFACTURER:-NXP}"
+USB_PRODUCT="${USB_PRODUCT:-NavQ95}"
+NIC_NAME="${NIC_NAME:-usbc}"
+NIC_ADDRESS="${NIC_ADDRESS:-10.41.1.1/24}"
+UDC_WAIT_S="${UDC_WAIT_S:-10}"
+
+FUNC="functions/${USB_NET_FUNCTION}.usb0"
+
+info()
+{
+    echo "${LOG_TAG}: ${*}"
+}
+
+err()
+{
+    echo "${LOG_TAG}: ERROR: ${*}" 1>&2
+}
+
+# Stable MACs and serial number derived from the board serial (or the
+# machine-id as fallback), so the host keeps the same interface name
+# (enx<mac>) across reboots.
+derive_ids()
+{
+    if [ -s /proc/device-tree/serial-number ]; then
+        _src="$(tr -d '\000' < /proc/device-tree/serial-number)"
+    elif [ -s /etc/machine-id ]; then
+        _src="$(cat /etc/machine-id)"
+    else
+        _src="navq95"
+    fi
+
+    _hash="$(printf '%s' "${_src}" | md5sum | cut -c1-12)"
+    serial_number="${_hash}"
+
+    _b1="$(printf '%s' "${_hash}" | cut -c1-2)"
+    _rest="$(printf '%s' "${_hash}" | cut -c3-10 | sed 's/../&:/g')"
+    _b6="$(printf '%s' "${_hash}" | cut -c11-12)"
+
+    # Unicast, locally administered; host and device differ in bit 0.
+    _b1="$(printf '%02x' "$(( 0x${_b1} & 0xfe | 0x02 ))")"
+    mac_host="${_b1}:${_rest}$(printf '%02x' "$(( 0x${_b6} & 0xfe ))")"
+    mac_dev="${_b1}:${_rest}$(printf '%02x' "$(( 0x${_b6} | 0x01 ))")"
+}
+
+find_udc()
+{
+    _waited=0
+    while :; do
+        if [ -n "${USB_UDC}" ]; then
+            [ -e "/sys/class/udc/${USB_UDC}" ] && { udc="${USB_UDC}"; return 0; }
+        else
+            udc="$(ls /sys/class/udc 2>/dev/null | head -n 1)"
+            [ -n "${udc}" ] && return 0
+        fi
+        if [ "${_waited}" -ge "${UDC_WAIT_S}" ]; then
+            err "UDC '${USB_UDC:-<any>}' not found in /sys/class/udc"
+            exit 1
+        fi
+        sleep 1
+        _waited=$((_waited + 1))
+    done
+}
+
+do_stop()
+{
+    [ -d "${GADGET_PATH}" ] || return 0
+
+    if ip link show "${NIC_NAME}" > /dev/null 2>&1; then
+        ip link set "${NIC_NAME}" down || true
+    fi
+
+    cd "${GADGET_PATH}"
+    if [ -n "$(cat UDC 2>/dev/null)" ]; then
+        info "Unbinding gadget"
+        echo "" > UDC
+    fi
+    for _l in configs/c.1/*.usb0; do
+        [ -L "${_l}" ] && rm "${_l}"
+    done
+    [ -d configs/c.1/strings/0x409 ] && rmdir configs/c.1/strings/0x409
+    [ -d configs/c.1 ] && rmdir configs/c.1
+    for _f in functions/*; do
+        [ -d "${_f}" ] && rmdir "${_f}"
+    done
+    [ -d strings/0x409 ] && rmdir strings/0x409
+    cd /
+    rmdir "${GADGET_PATH}"
+    info "Gadget removed"
+}
+
+do_start()
+{
+    case "${USB_NET_FUNCTION}" in
+        ncm|ecm) ;;
+        *) err "USB_NET_FUNCTION must be ncm or ecm, got '${USB_NET_FUNCTION}'"; exit 1 ;;
+    esac
+
+    modprobe libcomposite 2>/dev/null || true
+    if [ ! -d /sys/kernel/config/usb_gadget ]; then
+        err "configfs USB gadget support not available"
+        exit 1
+    fi
+
+    do_stop
+    derive_ids
+    find_udc
+
+    info "Creating gadget: ${USB_NET_FUNCTION} on ${udc}, host MAC ${mac_host}, dev MAC ${mac_dev}"
+    mkdir -p "${GADGET_PATH}"
+    cd "${GADGET_PATH}"
+
+    echo "${USB_ID_VENDOR}" > idVendor
+    echo "${USB_ID_PRODUCT}" > idProduct
+    echo 0x0200 > bcdUSB
+    mkdir -p strings/0x409
+    echo "${USB_MANUFACTURER}" > strings/0x409/manufacturer
+    echo "${USB_PRODUCT}" > strings/0x409/product
+    echo "${serial_number}" > strings/0x409/serialnumber
+
+    mkdir -p "${FUNC}"
+    echo "${mac_host}" > "${FUNC}/host_addr"
+    echo "${mac_dev}" > "${FUNC}/dev_addr"
+
+    mkdir -p configs/c.1/strings/0x409
+    echo "${USB_NET_FUNCTION}" | tr '[:lower:]' '[:upper:]' > configs/c.1/strings/0x409/configuration
+    ln -s "${FUNC}" configs/c.1/
+
+    echo "${udc}" > UDC
+
+    _if="$(cat "${FUNC}/ifname")"
+    if [ "${_if}" != "${NIC_NAME}" ]; then
+        ip link set "${_if}" down
+        ip link set "${_if}" name "${NIC_NAME}"
+    fi
+    ip addr flush dev "${NIC_NAME}"
+    ip addr add "${NIC_ADDRESS}" dev "${NIC_NAME}"
+    ip link set "${NIC_NAME}" up
+    info "${NIC_NAME} up with ${NIC_ADDRESS}"
+}
+
+case "${1:-}" in
+    start) do_start ;;
+    stop)  do_stop ;;
+    *)     echo "Usage: ${0} {start|stop}"; exit 2 ;;
+esac
