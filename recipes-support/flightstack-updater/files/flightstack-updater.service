@@ -1,0 +1,13 @@
+[Unit]
+Description=Run flightstack-updater
+After=mavlink-router.service systemd-tmpfiles-setup.service
+
+[Service]
+EnvironmentFile=-/etc/default/flightstack-updater
+ExecStart=/usr/sbin/run_flightstack_updater.sh
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=5
+
+[Install]
+WantedBy=multi-user.target

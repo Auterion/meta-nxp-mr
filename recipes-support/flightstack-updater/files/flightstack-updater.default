@@ -1,0 +1,18 @@
+# Configuration for flightstack-updater.service (NavQ95)
+# Paths follow the Skynode layout (AuterionOS auterion.env).
+
+# Checkout of github.com/Auterion/flightstack-uploader, copied manually
+UPLOADER_DIR="/home/user/px4/flightstack-uploader"
+
+# Watched directory: update.tar (system), update-dev.tar (dev), update_status
+CONFIG_DIR="/shared_container_dir/fmu"
+
+FIRMWARE_VERSION_FILE="/persistent/current_fmu_version"
+AUTERION_UPLOADER_LOG_DIR="/persistent"
+METADATA_OUTPUT_DIR="/persistent/metadata/fmu"
+
+DEVICE="navq95"
+
+# NavQ-only: without the update preventer the armed-state check times out
+# after 15 s. Remove once the armed state can be read.
+EXTRA_ARGS="--skip-arming-check"
