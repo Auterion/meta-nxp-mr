@@ -56,6 +56,7 @@ IMAGE_INSTALL:append:imx95-navq = " \
 	linux-firmware-mali-csffw-arch1012 \
 	panvk-layer \
     enetc-vsi-handoff-mcore \
+	flightstack-updater \
 	"
 
 APTGET_EXTRA_PACKAGES += "\

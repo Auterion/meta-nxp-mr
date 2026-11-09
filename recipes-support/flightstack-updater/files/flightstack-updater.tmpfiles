@@ -1,0 +1,8 @@
+# Skynode directory layout for the flightstack-uploader.
+# /shared_container_dir/fmu is written over scp by PX4's upload_navq_usb
+# target as user "user".
+d /persistent                  0755 root root -
+d /persistent/metadata         0755 root root -
+d /persistent/metadata/fmu     0755 root root -
+d /shared_container_dir        0755 root root -
+d /shared_container_dir/fmu    0775 user user -
