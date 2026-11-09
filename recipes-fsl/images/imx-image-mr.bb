@@ -57,6 +57,7 @@ IMAGE_INSTALL:append:imx95-navq = " \
 	panvk-layer \
     enetc-vsi-handoff-mcore \
 	flightstack-updater \
+	inotify-simple-ubuntu \
 	"
 
 APTGET_EXTRA_PACKAGES += "\
@@ -64,6 +65,7 @@ APTGET_EXTRA_PACKAGES += "\
 	python3-numpy \
 	python3-pil \
 	python3-pip \
+	python3-serial \
 	vulkan-tools \
 	iw \
 	rfkill \
